@@ -1,7 +1,3 @@
-<p align="center">
-  <img width="400" height="135" alt="image" src="https://github.com/user-attachments/assets/0650f319-7b4c-4448-af4c-f929f8b55de0" />
-</p>
-
 <p align="center">TUI for running parallel coding agents</p>
 
 <img width="3831" height="2155" alt="image" src="https://github.com/user-attachments/assets/cd1e75a7-6568-4863-bb47-7b0230c1eb6f" />
@@ -9,13 +5,13 @@
 ---
 
 
-## What is tumuxi?
+## What is tumux?
 
-tumuxi is a TUI for running multiple coding agents in parallel. Each agent works in isolation on its own git worktree branch, so you can merge changes back when done.
+Tumux is a TUI for running multiple coding agents in parallel. Each agent works in isolation on its own git worktree branch, so you can merge changes back when done.
 
 ## Prerequisites
 
-tumuxi requires [tmux](https://github.com/tmux/tmux) (minimum 3.2). Each agent runs in its own tmux session for terminal isolation and persistence.
+Tumux requires [tmux](https://github.com/tmux/tmux) (minimum 3.2). Each agent runs in its own tmux session for terminal isolation and persistence.
 
 ## Quick start
 
@@ -28,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/tlepoid/tumux/main/install.sh | sh
 Or with Go:
 
 ```bash
-go install github.com/tlepoid/tumuxi/cmd/tumuxi@latest
+go install github.com/tlepoid/Tumux/cmd/Tumux@latest
 ```
 
 ## Features
