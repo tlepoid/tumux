@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tlepoid/tumuxi/internal/logging"
+	"github.com/tlepoid/tumux/internal/logging"
 )
 
 const staleSocketDialTimeout = 75 * time.Millisecond
@@ -27,7 +27,7 @@ func cleanupStaleTestTmuxSockets() {
 				continue
 			}
 			name := entry.Name()
-			if !strings.HasPrefix(name, "tumuxi-test-") && !strings.HasPrefix(name, "tumuxi-e2e-check-") {
+			if !strings.HasPrefix(name, "tumux-test-") && !strings.HasPrefix(name, "tumux-e2e-check-") {
 				continue
 			}
 			info, err := entry.Info()

@@ -4,7 +4,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/tlepoid/tumuxi/internal/logging"
+	"github.com/tlepoid/tumux/internal/logging"
 )
 
 // Send sends a desktop notification using notify-send.
@@ -13,7 +13,7 @@ import (
 // The goroutine blocks until the notification is dismissed or acted on.
 func Send(title, body string, onAction func()) {
 	go func() {
-		args := []string{"--app-name=tumuxi"}
+		args := []string{"--app-name=tumux"}
 		if onAction != nil {
 			args = append(args, "--action=switch=Switch")
 		}

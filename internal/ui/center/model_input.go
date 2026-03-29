@@ -6,10 +6,10 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/tlepoid/tumuxi/internal/logging"
-	"github.com/tlepoid/tumuxi/internal/messages"
-	"github.com/tlepoid/tumuxi/internal/perf"
-	"github.com/tlepoid/tumuxi/internal/ui/common"
+	"github.com/tlepoid/tumux/internal/logging"
+	"github.com/tlepoid/tumux/internal/messages"
+	"github.com/tlepoid/tumux/internal/perf"
+	"github.com/tlepoid/tumux/internal/ui/common"
 )
 
 // directSendToTerminal sends data directly to the terminal, handling errors.
@@ -279,6 +279,13 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 					}
 					tab.mu.Unlock()
 				}
+
+				// Clear complete mark on user interaction
+				tab.mu.Lock()
+				if tab.MarkedComplete {
+					tab.MarkedComplete = false
+				}
+				tab.mu.Unlock()
 
 				// Forward ALL keys to terminal (no Ctrl interceptions)
 				input := common.KeyToBytes(msg)

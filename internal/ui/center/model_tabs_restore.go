@@ -7,10 +7,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/tlepoid/tumuxi/internal/data"
-	appPty "github.com/tlepoid/tumuxi/internal/pty"
-	"github.com/tlepoid/tumuxi/internal/tmux"
-	"github.com/tlepoid/tumuxi/internal/vterm"
+	"github.com/tlepoid/tumux/internal/data"
+	appPty "github.com/tlepoid/tumux/internal/pty"
+	"github.com/tlepoid/tumux/internal/tmux"
+	"github.com/tlepoid/tumux/internal/vterm"
 )
 
 func (m *Model) addDetachedTab(ws *data.Workspace, info data.TabInfo) {
@@ -37,16 +37,17 @@ func (m *Model) addDetachedTab(ws *data.Workspace, info data.TabInfo) {
 		ca = time.Now().Unix()
 	}
 	tab := &Tab{
-		ID:            generateTabID(),
-		Name:          displayName,
-		Assistant:     info.Assistant,
-		Workspace:     ws,
-		SessionName:   info.SessionName,
-		Detached:      true,
-		Running:       false,
-		Terminal:      term,
-		createdAt:     ca,
-		lastFocusedAt: time.Unix(ca, 0),
+		ID:             generateTabID(),
+		Name:           displayName,
+		Assistant:      info.Assistant,
+		Workspace:      ws,
+		SessionName:    info.SessionName,
+		Detached:       true,
+		Running:        false,
+		MarkedComplete: info.Status == "complete",
+		Terminal:       term,
+		createdAt:      ca,
+		lastFocusedAt:  time.Unix(ca, 0),
 	}
 	isChat := m.isChatTab(tab)
 	term.IgnoreCursorVisibilityControls = isChat
@@ -80,7 +81,7 @@ func (m *Model) addPlaceholderTab(ws *data.Workspace, info data.TabInfo) (TabID,
 	tabID := generateTabID()
 	sessionName := strings.TrimSpace(info.SessionName)
 	if sessionName == "" {
-		sessionName = tmux.SessionName("tumuxi", string(ws.ID()), string(tabID))
+		sessionName = tmux.SessionName("tumux", string(ws.ID()), string(tabID))
 	}
 	ca := info.CreatedAt
 	if ca == 0 {
@@ -94,6 +95,7 @@ func (m *Model) addPlaceholderTab(ws *data.Workspace, info data.TabInfo) (TabID,
 		SessionName: sessionName,
 		Detached:    true,
 		Running:     false,
+		MarkedComplete: info.Status == "complete",
 		// Placeholder tabs are immediately queued for async reattach.
 		reattachInFlight: true,
 		Terminal:         term,

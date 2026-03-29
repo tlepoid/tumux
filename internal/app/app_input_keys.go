@@ -2,15 +2,16 @@ package app
 
 import (
 	"fmt"
+	"strings"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/tlepoid/tumuxi/internal/data"
-	"github.com/tlepoid/tumuxi/internal/logging"
-	"github.com/tlepoid/tumuxi/internal/messages"
-	"github.com/tlepoid/tumuxi/internal/notify"
-	"github.com/tlepoid/tumuxi/internal/ui/common"
+	"github.com/tlepoid/tumux/internal/data"
+	"github.com/tlepoid/tumux/internal/logging"
+	"github.com/tlepoid/tumux/internal/messages"
+	"github.com/tlepoid/tumux/internal/notify"
+	"github.com/tlepoid/tumux/internal/ui/common"
 )
 
 // syncActiveWorkspacesToDashboard syncs the active workspace state from center to dashboard.
@@ -22,43 +23,96 @@ func (a *App) syncActiveWorkspacesToDashboard() {
 		return
 	}
 	activeWorkspaces := make(map[string]bool)
-	if !a.tmuxActivitySettled {
-		a.dashboard.SetActiveWorkspaces(activeWorkspaces)
-		return
-	}
-	for wsID := range a.tmuxActiveWorkspaceIDs {
-		activeWorkspaces[wsID] = true
+	if a.tmuxActivitySettled {
+		for wsID := range a.tmuxActiveWorkspaceIDs {
+			activeWorkspaces[wsID] = true
+		}
 	}
 	a.dashboard.SetActiveWorkspaces(activeWorkspaces)
+	// Start with statuses derived from persisted workspace metadata so that
+	// indicators are visible immediately on load (before any workspace is visited).
+	statuses := a.workspaceStatusesFromMetadata()
+	// Overlay live statuses from the center model for workspaces that have
+	// been visited and have in-memory tabs.
 	if a.center != nil {
-		baseStatuses := a.center.GetWorkspaceStatuses()
-
-		// Resolve final statuses: upgrade Waiting→Running when tmux confirms activity.
-		resolved := make(map[string]common.AgentStatus, len(baseStatuses))
-		for wsID, s := range baseStatuses {
-			if s == common.AgentStatusWaiting && activeWorkspaces[wsID] {
-				s = common.AgentStatusRunning
-			}
-			resolved[wsID] = s
+		for wsID, s := range a.center.GetWorkspaceStatuses() {
+			statuses[wsID] = s
 		}
+	}
 
-		// Detect Running→Waiting transitions for notifications.
-		if a.config.UI.NotifyOnWaiting && a.prevWorkspaceStatuses != nil {
-			for wsID, cur := range resolved {
-				prev := a.prevWorkspaceStatuses[wsID]
-				if prev == common.AgentStatusRunning && cur == common.AgentStatusWaiting {
-					a.sendWaitingNotification(wsID)
+	// Resolve final statuses: upgrade Waiting→Running when tmux confirms activity.
+	resolved := make(map[string]common.AgentStatus, len(statuses))
+	for wsID, s := range statuses {
+		if s == common.AgentStatusWaiting && activeWorkspaces[wsID] {
+			s = common.AgentStatusRunning
+		}
+		resolved[wsID] = s
+	}
+
+	// Detect Running→Waiting transitions for notifications.
+	if a.config.UI.NotifyOnWaiting && a.prevWorkspaceStatuses != nil {
+		for wsID, cur := range resolved {
+			prev := a.prevWorkspaceStatuses[wsID]
+			if prev == common.AgentStatusRunning && cur == common.AgentStatusWaiting {
+				a.sendWaitingNotification(wsID)
+			}
+		}
+	}
+	a.prevWorkspaceStatuses = resolved
+
+	a.dashboard.SetWorkspaceStatuses(statuses)
+}
+
+// workspaceStatusesFromMetadata derives agent statuses from persisted workspace
+// OpenTabs metadata. This provides immediate status indicators on startup before
+// any workspace tabs have been restored in the center model.
+func (a *App) workspaceStatusesFromMetadata() map[string]common.AgentStatus {
+	result := make(map[string]common.AgentStatus)
+	for i := range a.projects {
+		for j := range a.projects[i].Workspaces {
+			ws := &a.projects[i].Workspaces[j]
+			if len(ws.OpenTabs) == 0 {
+				continue
+			}
+			best := common.AgentStatusIdle
+			for _, tab := range ws.OpenTabs {
+				if tab.Assistant == "" {
+					continue
+				}
+				if a.config != nil && a.config.Assistants != nil {
+					if _, ok := a.config.Assistants[tab.Assistant]; !ok {
+						continue
+					}
+				}
+				var s common.AgentStatus
+				status := strings.ToLower(strings.TrimSpace(tab.Status))
+				switch status {
+				case "complete":
+					s = common.AgentStatusComplete
+				case "running":
+					s = common.AgentStatusWaiting
+				case "detached":
+					if tab.SessionName != "" {
+						s = common.AgentStatusWaiting
+					} else {
+						s = common.AgentStatusIdle
+					}
+				default:
+					s = common.AgentStatusIdle
+				}
+				if s > best {
+					best = s
 				}
 			}
+			wsID := string(ws.ID())
+			result[wsID] = best
 		}
-		a.prevWorkspaceStatuses = resolved
-
-		a.dashboard.SetWorkspaceStatuses(baseStatuses)
 	}
+	return result
 }
 
 // sendWaitingNotification sends a desktop notification that an agent needs input.
-// If the user clicks the notification, it switches tumuxi to that workspace.
+// If the user clicks the notification, it switches tumux to that workspace.
 func (a *App) sendWaitingNotification(wsID string) {
 	name := wsID
 	var matchedProject *data.Project

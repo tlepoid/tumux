@@ -6,8 +6,8 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/tlepoid/tumuxi/internal/messages"
-	"github.com/tlepoid/tumuxi/internal/ui/common"
+	"github.com/tlepoid/tumux/internal/messages"
+	"github.com/tlepoid/tumux/internal/ui/common"
 )
 
 type prefixMatch int
@@ -42,6 +42,8 @@ var prefixCommandTable = []prefixCommand{
 	{Sequence: []string{"t", "d"}, Desc: "detach tab", Action: "detach_tab"},
 	{Sequence: []string{"t", "r"}, Desc: "reattach tab", Action: "reattach_tab"},
 	{Sequence: []string{"t", "s"}, Desc: "restart tab", Action: "restart_tab"},
+	{Sequence: []string{"t", "c"}, Desc: "toggle complete", Action: "toggle_complete_tab"},
+	{Sequence: []string{"s"}, Desc: "sort by status", Action: "toggle_sort_by_status"},
 }
 
 // Prefix mode helpers (leader key)
@@ -147,7 +149,18 @@ func (a *App) prefixInputToken(msg tea.KeyPressMsg) (string, bool) {
 }
 
 func (a *App) prefixCommands() []prefixCommand {
-	return prefixCommandTable
+	cmds := make([]prefixCommand, len(prefixCommandTable))
+	copy(cmds, prefixCommandTable)
+	for i := range cmds {
+		if cmds[i].Action == "toggle_sort_by_status" && a.dashboard != nil {
+			if a.dashboard.IsSortByStatus() {
+				cmds[i].Desc = "sort by date"
+			} else {
+				cmds[i].Desc = "sort by status"
+			}
+		}
+	}
+	return cmds
 }
 
 // matchingPrefixCommands intentionally does not apply prefixActionVisible.
@@ -284,6 +297,31 @@ func (a *App) runPrefixAction(action string) tea.Cmd {
 			return a.center.RestartActiveTab()
 		case messages.PaneSidebarTerminal:
 			return a.sidebarTerminal.RestartActiveTab()
+		}
+		return nil
+	case "toggle_sort_by_status":
+		sortByStatus := a.dashboard.ToggleSortByStatus()
+		if a.toast != nil {
+			if sortByStatus {
+				return a.toast.Show("Sort: by status", common.ToastInfo, 2*time.Second)
+			}
+			return a.toast.Show("Sort: by date", common.ToastInfo, 2*time.Second)
+		}
+		return nil
+	case "toggle_complete_tab":
+		switch a.focusedPane {
+		case messages.PaneCenter:
+			if a.center.ToggleActiveTabComplete() {
+				return a.persistActiveWorkspaceTabs()
+			}
+		case messages.PaneDashboard:
+			if a.activeWorkspace == nil {
+				return nil
+			}
+			wsID := string(a.activeWorkspace.ID())
+			if a.center.ToggleWorkspaceComplete(wsID) {
+				return a.persistWorkspaceTabs(wsID)
+			}
 		}
 		return nil
 	default:

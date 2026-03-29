@@ -1,6 +1,6 @@
 package app
 
-import "github.com/tlepoid/tumuxi/internal/messages"
+import "github.com/tlepoid/tumux/internal/messages"
 
 func (a *App) prefixActionVisible(action string) bool {
 	// Keep behavior permissive in lightweight tests that don't fully initialize App state.
@@ -39,6 +39,11 @@ func (a *App) prefixActionVisible(action string) bool {
 	case "close_tab", "detach_tab", "reattach_tab", "restart_tab":
 		if a.focusedPane == messages.PaneSidebarTerminal {
 			return true
+		}
+		return a.center.HasTabs()
+	case "toggle_complete_tab":
+		if a.focusedPane == messages.PaneDashboard {
+			return a.activeWorkspace != nil
 		}
 		return a.center.HasTabs()
 	default:
