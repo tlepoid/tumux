@@ -1,18 +1,23 @@
 package app
 
 import (
+	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/tlepoid/tumux/internal/data"
 	"github.com/tlepoid/tumux/internal/logging"
 	"github.com/tlepoid/tumux/internal/messages"
+	"github.com/tlepoid/tumux/internal/notify"
 	"github.com/tlepoid/tumux/internal/ui/common"
 )
 
 // syncActiveWorkspacesToDashboard syncs the active workspace state from center to dashboard.
 // This ensures the dashboard has current data for spinner state decisions.
+// It also detects Running→Waiting transitions and sends desktop notifications
+// when the notify_on_waiting setting is enabled.
 func (a *App) syncActiveWorkspacesToDashboard() {
 	if a.dashboard == nil {
 		return
@@ -34,6 +39,27 @@ func (a *App) syncActiveWorkspacesToDashboard() {
 			statuses[wsID] = s
 		}
 	}
+
+	// Resolve final statuses: upgrade Waiting→Running when tmux confirms activity.
+	resolved := make(map[string]common.AgentStatus, len(statuses))
+	for wsID, s := range statuses {
+		if s == common.AgentStatusWaiting && activeWorkspaces[wsID] {
+			s = common.AgentStatusRunning
+		}
+		resolved[wsID] = s
+	}
+
+	// Detect Running→Waiting transitions for notifications.
+	if a.config != nil && a.config.UI.NotifyOnWaiting && a.prevWorkspaceStatuses != nil {
+		for wsID, cur := range resolved {
+			prev := a.prevWorkspaceStatuses[wsID]
+			if prev == common.AgentStatusRunning && cur == common.AgentStatusWaiting {
+				a.sendWaitingNotification(wsID)
+			}
+		}
+	}
+	a.prevWorkspaceStatuses = resolved
+
 	a.dashboard.SetWorkspaceStatuses(statuses)
 }
 
@@ -83,6 +109,36 @@ func (a *App) workspaceStatusesFromMetadata() map[string]common.AgentStatus {
 		}
 	}
 	return result
+}
+
+// sendWaitingNotification sends a desktop notification that an agent needs input.
+// If the user clicks the notification, it switches tumux to that workspace.
+func (a *App) sendWaitingNotification(wsID string) {
+	name := wsID
+	var matchedProject *data.Project
+	var matchedWorkspace *data.Workspace
+	// Try to find a human-readable workspace name and keep references for the callback.
+	for i := range a.projects {
+		for j := range a.projects[i].Workspaces {
+			ws := &a.projects[i].Workspaces[j]
+			if string(ws.ID()) == wsID {
+				matchedProject = &a.projects[i]
+				matchedWorkspace = ws
+				name = fmt.Sprintf("%s/%s", a.projects[i].Name, ws.Name)
+				break
+			}
+		}
+	}
+	logging.Info("Sending waiting notification for workspace %s", name)
+
+	var onAction func()
+	if matchedProject != nil && matchedWorkspace != nil && a.externalSender != nil {
+		p, ws, sender := matchedProject, matchedWorkspace, a.externalSender
+		onAction = func() {
+			sender(messages.NotificationClicked{Project: p, Workspace: ws})
+		}
+	}
+	notify.Send("Agent waiting", name+" needs your input", onAction)
 }
 
 // handleKeyPress handles keyboard input

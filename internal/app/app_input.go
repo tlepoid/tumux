@@ -94,6 +94,9 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.ProjectsLoaded:
 		cmds = append(cmds, a.handleProjectsLoaded(msg)...)
 
+	case messages.NotificationClicked:
+		cmds = append(cmds, a.handleWorkspaceActivated(messages.WorkspaceActivated(msg))...)
+
 	case messages.WorkspaceActivated:
 		cmds = append(cmds, a.handleWorkspaceActivated(msg)...)
 
@@ -171,6 +174,13 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case common.ThemePreview:
 		if cmd := a.handleThemePreview(msg); cmd != nil {
 			cmds = append(cmds, cmd)
+		}
+
+	case common.NotifyOnWaitingChanged:
+		a.config.UI.NotifyOnWaiting = msg.Enabled
+		if err := a.config.SaveUISettings(); err != nil {
+			logging.Warn("Failed to save notification setting: %v", err)
+			cmds = append(cmds, a.toast.ShowWarning("Failed to save notification setting"))
 		}
 
 	case common.SettingsResult:
