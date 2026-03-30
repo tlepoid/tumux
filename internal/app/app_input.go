@@ -95,10 +95,7 @@ func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, a.handleProjectsLoaded(msg)...)
 
 	case messages.NotificationClicked:
-		cmds = append(cmds, a.handleWorkspaceActivated(messages.WorkspaceActivated{
-			Project:   msg.Project,
-			Workspace: msg.Workspace,
-		})...)
+		cmds = append(cmds, a.handleWorkspaceActivated(messages.WorkspaceActivated(msg))...)
 
 	case messages.WorkspaceActivated:
 		cmds = append(cmds, a.handleWorkspaceActivated(msg)...)

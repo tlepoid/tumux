@@ -22,9 +22,9 @@ type ThemePreview struct {
 type settingsItem int
 
 const (
-	settingsItemTheme          settingsItem = iota
-	settingsItemNotifyOnWaiting             // toggle for desktop notifications
-	settingsItemUpdate                      // only shown when update available
+	settingsItemTheme           settingsItem = iota
+	settingsItemNotifyOnWaiting              // toggle for desktop notifications
+	settingsItemUpdate                       // only shown when update available
 	settingsItemClose
 )
 
