@@ -50,7 +50,7 @@ func (a *App) syncActiveWorkspacesToDashboard() {
 	}
 
 	// Detect Running→Waiting transitions for notifications.
-	if a.config.UI.NotifyOnWaiting && a.prevWorkspaceStatuses != nil {
+	if a.config != nil && a.config.UI.NotifyOnWaiting && a.prevWorkspaceStatuses != nil {
 		for wsID, cur := range resolved {
 			prev := a.prevWorkspaceStatuses[wsID]
 			if prev == common.AgentStatusRunning && cur == common.AgentStatusWaiting {
